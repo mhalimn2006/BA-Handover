@@ -1,0 +1,1425 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-BAST: Berita Acara Serah Terima Barang</title>
+    <!-- Tailwind CSS for Premium UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for Professional Typography -->
+    <link href="https://fonts.googleapis.com/css2 family=Plus+Jakarta+Sans:wght=300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- html2pdf.js for Client-Side PDF Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        /* Custom signature canvas styles */
+        .sig-canvas {
+            border: 2px dashed #cbd5e1;
+            cursor: crosshair;
+            touch-action: none;
+        }
+        /* Hide element on print */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+            body {
+                background: white !important;
+                color: black !important;
+            }
+            .print-card {
+                box-shadow: none !important;
+                border: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
+
+    <!-- Toast Notification System -->
+    <div id="toast" class="fixed top-5 right-5 z-50 transform translate-y-[-100px] opacity-0 transition-all duration-300 ease-out bg-slate-900 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center space-x-3 no-print">
+        <span id="toast-icon" class="text-xl"><i class="fas fa-check-circle"></i></span>
+        <span id="toast-message" class="font-medium text-sm">Pesan toast disini...</span>
+    </div>
+
+    <!-- Custom Dialog Modal (Replaces Native Confirm Alerts) -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden no-print">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div class="flex items-center space-x-3">
+                <span class="bg-amber-100 text-amber-800 h-10 w-10 rounded-full flex items-center justify-center text-lg"><i class="fas fa-exclamation-triangle"></i></span>
+                <h3 id="confirm-title" class="font-bold text-slate-900 text-lg">Konfirmasi Tindakan</h3>
+            </div>
+            <p id="confirm-message" class="text-slate-600 text-sm leading-relaxed">Apakah Anda yakin ingin melanjutkan tindakan ini?</p>
+            <div class="flex justify-end space-x-3 pt-2">
+                <button id="confirm-cancel" class="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl text-xs hover:bg-slate-200 transition">Batal</button>
+                <button id="confirm-ok" class="px-5 py-2 bg-blue-900 text-white font-bold rounded-xl text-xs hover:bg-slate-900 transition shadow-md shadow-blue-500/10">Ya, Lanjutkan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Header (Biru Dongker Theme) -->
+    <header class="bg-slate-900 text-white sticky top-0 z-40 no-print shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-blue-600 text-white p-2.5 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
+                        <i class="fa-solid fa-file-signature text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold tracking-tight text-white">E-BAST</h1>
+                        <p class="text-xs text-slate-300 font-medium">Serah Terima Material Online</p>
+                    </div>
+                </div>
+                
+                <!-- Navigation Tabs -->
+                <nav class="flex space-x-1 bg-slate-800 p-1 rounded-xl">
+                    <button onclick="switchTab('form')" id="tab-form" class="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white shadow-sm transition-all duration-200">
+                        <i class="fas fa-edit mr-1.5"></i> Formulir BAST
+                    </button>
+                    <button onclick="switchTab('riwayat')" id="tab-riwayat" class="px-4 py-2 text-sm font-semibold rounded-lg text-slate-300 hover:text-white transition-all duration-200">
+                        <i class="fas fa-history mr-1.5"></i> Riwayat <span id="riwayat-count" class="ml-1 bg-slate-700 text-white text-xs px-2 py-0.5 rounded-full">0</span>
+                    </button>
+                    <button onclick="switchTab('panduan')" id="tab-panduan" class="px-4 py-2 text-sm font-semibold rounded-lg text-slate-300 hover:text-white transition-all duration-200">
+                        <i class="fas fa-code mr-1.5"></i> Script Google
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- ================= FORMULIR TAB ================= -->
+        <div id="section-form" class="space-y-6">
+            <div class="bg-white rounded-3xl border border-slate-200 shadow-sm print-card overflow-hidden">
+                <!-- Header Banner - Navy Blue (Biru Dongker) -->
+                <div class="bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 px-8 py-8 text-white relative overflow-hidden">
+                    <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]"></div>
+                    <div class="relative z-10">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            <div>
+                                <span class="bg-blue-500/30 text-blue-100 text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-blue-400/20">Dokumen Resmi</span>
+                                <h2 class="text-2xl md:text-3xl font-extrabold mt-2">BERITA ACARA SERAH TERIMA</h2>
+                                <p class="text-blue-100/80 text-sm mt-1">Serah terima material, aset, atau barang inventaris instansi/perusahaan secara digital.</p>
+                            </div>
+                            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                                <button type="button" onclick="loadDemoData()" class="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-xs font-bold text-white transition flex items-center space-x-1.5">
+                                    <i class="fas fa-magic"></i>
+                                    <span>Muat Data Demo</span>
+                                </button>
+                                <div class="bg-white/10 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/20 text-right text-xs md:text-sm">
+                                    <div class="font-semibold" id="header-date">Minggu, 21 Juni 2026</div>
+                                    <div class="text-blue-200/80 mt-0.5" id="header-no">No: BAST/2026/06/001</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Body -->
+                <form id="bast-form" class="p-8 space-y-8" onsubmit="handleFormSubmit(event)">
+                    
+                    <!-- Kategori & Info Umum -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">No. Dokumen <span class="text-rose-500">*</span></label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fas fa-hashtag"></i></span>
+                                <input type="text" id="doc_no" required class="pl-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-600/20 transition-all duration-150" placeholder="Contoh: BAST/2026/06/001">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tanggal Penyerahan <span class="text-rose-500">*</span></label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fas fa-calendar-alt"></i></span>
+                                <input type="date" id="doc_date" required class="pl-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-600/20 transition-all duration-150">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Lokasi Serah Terima <span class="text-rose-500">*</span></label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fas fa-map-marker-alt"></i></span>
+                                <input type="text" id="doc_location" required class="pl-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-600/20 transition-all duration-150" placeholder="Gudang Utama / Kantor Pusat">
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="border-slate-200">
+
+                    <!-- Pihak Terkait (Grid Kolom Kiri & Kanan) -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        
+                        <!-- PIHAK PERTAMA (YANG MENYERAHKAN) -->
+                        <div class="bg-slate-50/70 p-6 rounded-2xl border border-slate-200 space-y-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <div class="flex items-center space-x-3">
+                                    <span class="bg-blue-100 text-blue-900 h-8 w-8 rounded-lg flex items-center justify-center font-bold text-sm">P1</span>
+                                    <h3 class="font-bold text-slate-800">PIHAK PERTAMA (Yang Menyerahkan)</h3>
+                                </div>
+                                <div class="flex items-center space-x-1.5 text-xs text-slate-500">
+                                    <input type="checkbox" id="remember-p1" class="rounded text-blue-900 focus:ring-blue-900/10 h-4 w-4">
+                                    <label for="remember-p1" class="font-semibold cursor-pointer">Ingat Profil</label>
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-500 mb-1">Nama Lengkap <span class="text-rose-500">*</span></label>
+                                    <input type="text" id="p1_name" required class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all duration-150" placeholder="Nama Penyerah">
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-500 mb-1">Jabatan <span class="text-rose-500">*</span></label>
+                                        <input type="text" id="p1_role" required class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all duration-150" placeholder="Staff Gudang / Kurir">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-500 mb-1">Perusahaan / Divisi <span class="text-rose-500">*</span></label>
+                                        <input type="text" id="p1_company" required class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all duration-150" placeholder="Logistik PT ABC">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PIHAK KEDUA (YANG MENERIMA) -->
+                        <div class="bg-slate-50/70 p-6 rounded-2xl border border-slate-200 space-y-4">
+                            <div class="flex items-center space-x-3 mb-2">
+                                <span class="bg-indigo-100 text-indigo-900 h-8 w-8 rounded-lg flex items-center justify-center font-bold text-sm">P2</span>
+                                <h3 class="font-bold text-slate-800">PIHAK KEDUA (Yang Menerima)</h3>
+                            </div>
+                            
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-500 mb-1">Nama Lengkap <span class="text-rose-500">*</span></label>
+                                    <input type="text" id="p2_name" required class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all duration-150" placeholder="Nama Penerima">
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-500 mb-1">Jabatan <span class="text-rose-500">*</span></label>
+                                        <input type="text" id="p2_role" required class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all duration-150" placeholder="Supervisor / Client">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-500 mb-1">Perusahaan / Divisi <span class="text-rose-500">*</span></label>
+                                        <input type="text" id="p2_company" required class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all duration-150" placeholder="PT Sukses Mandiri">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <hr class="border-slate-200">
+
+                    <!-- DAFTAR MATERIAL / BARANG -->
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-blue-900"><i class="fas fa-boxes-stacked text-lg"></i></span>
+                                <h3 class="font-bold text-slate-900 text-base">Daftar Material / Barang</h3>
+                            </div>
+                            <button type="button" onclick="addMaterialRow()" class="no-print inline-flex items-center space-x-2 bg-blue-50 text-blue-900 hover:bg-blue-100 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200">
+                                <i class="fas fa-plus"></i>
+                                <span>Tambah Baris</span>
+                            </button>
+                        </div>
+
+                        <!-- Table -->
+                        <div class="overflow-x-auto border border-slate-200 rounded-2xl">
+                            <table class="min-w-full divide-y divide-slate-200 text-sm">
+                                <thead class="bg-slate-50">
+                                    <tr>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-12 text-center">No</th>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Nama Barang / Material <span class="text-rose-500">*</span></th>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-28">Jumlah <span class="text-rose-500">*</span></th>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-28">Satuan <span class="text-rose-500">*</span></th>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-40">Kondisi <span class="text-rose-500">*</span></th>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-40">Keterangan</th>
+                                        <th scope="col" class="no-print px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider w-16">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="material-rows" class="bg-white divide-y divide-slate-100">
+                                    <!-- Dynamic rows injected here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- CATATAN TAMBAHAN -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Catatan Tambahan / Pernyataan Tambahan</label>
+                        <textarea id="notes" rows="3" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-600/20 transition-all duration-150" placeholder="Tuliskan catatan khusus terkait serah terima barang ini (misal: Sisa pengiriman menyusul, Garansi resmi 1 tahun, dsb.)"></textarea>
+                    </div>
+
+                    <hr class="border-slate-200">
+
+                    <!-- AREA TANDA TANGAN (DIGITAL SIGNATURE) -->
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-blue-900"><i class="fas fa-signature text-lg"></i></span>
+                            <h3 class="font-bold text-slate-900 text-base">Tanda Tangan Digital (Tajam & Presisi Seluler)</h3>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <!-- Tanda Tangan Pihak Pertama -->
+                            <div class="bg-slate-50/50 p-5 rounded-2xl border border-slate-200 space-y-3">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xs font-bold text-slate-600 uppercase">Tanda Tangan Pihak Pertama (Penyerah)</span>
+                                    <button type="button" onclick="clearCanvas('p1-canvas')" class="no-print text-xs font-semibold text-rose-500 hover:text-rose-700 transition duration-150">
+                                        <i class="fas fa-eraser mr-1"></i> Bersihkan
+                                    </button>
+                                </div>
+                                <div class="bg-white rounded-xl overflow-hidden shadow-inner">
+                                    <canvas id="p1-canvas" class="sig-canvas w-full h-40" height="160"></canvas>
+                                </div>
+                                <div class="text-center font-medium text-slate-700 text-sm" id="p1-signature-label">Pihak Pertama</div>
+                            </div>
+
+                            <!-- Tanda Tangan Pihak Kedua -->
+                            <div class="bg-slate-50/50 p-5 rounded-2xl border border-slate-200 space-y-3">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xs font-bold text-slate-600 uppercase">Tanda Tangan Pihak Kedua (Penerima)</span>
+                                    <button type="button" onclick="clearCanvas('p2-canvas')" class="no-print text-xs font-semibold text-rose-500 hover:text-rose-700 transition duration-150">
+                                        <i class="fas fa-eraser mr-1"></i> Bersihkan
+                                    </button>
+                                </div>
+                                <div class="bg-white rounded-xl overflow-hidden shadow-inner">
+                                    <canvas id="p2-canvas" class="sig-canvas w-full h-40" height="160"></canvas>
+                                </div>
+                                <div class="text-center font-medium text-slate-700 text-sm" id="p2-signature-label">Pihak Kedua</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- FORM ACTION BUTTONS -->
+                    <div class="no-print flex flex-col sm:flex-row gap-4 justify-end pt-4">
+                        <button type="button" onclick="triggerResetForm()" class="px-6 py-3 border border-slate-300 text-slate-700 font-semibold rounded-xl text-sm hover:bg-slate-50 transition duration-150">
+                            <i class="fas fa-undo mr-1.5"></i> Reset Form
+                        </button>
+                        <button type="submit" id="btn-submit-main" class="px-8 py-3 bg-blue-900 text-white font-semibold rounded-xl text-sm hover:bg-slate-900 shadow-lg shadow-blue-500/20 transition duration-150 flex items-center justify-center space-x-2">
+                            <span id="submit-spinner" class="hidden"><i class="fas fa-spinner fa-spin mr-1.5"></i></span>
+                            <span id="submit-icon"><i class="fas fa-paper-plane mr-1.5"></i></span>
+                            <span id="submit-text">Simpan BAST & Kirim ke Spreadsheet</span>
+                        </button>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+
+        <!-- ================= RIWAYAT TAB ================= -->
+        <div id="section-riwayat" class="hidden space-y-6">
+            <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-900">Riwayat Serah Terima Barang (Lokal)</h2>
+                        <p class="text-sm text-slate-500">Menampilkan salinan data BAST yang disimpan secara lokal di browser Anda.</p>
+                    </div>
+                    <button onclick="triggerClearHistory()" class="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-bold transition duration-150">
+                        <i class="fas fa-trash-alt mr-1.5"></i> Hapus Semua Riwayat
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto rounded-2xl border border-slate-200">
+                    <table class="min-w-full divide-y divide-slate-200 text-sm">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase">No. Dokumen</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase">Tanggal</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase">Pihak Pertama</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase">Pihak Kedua</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase">Total Item</th>
+                                <th class="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="riwayat-rows" class="bg-white divide-y divide-slate-100">
+                            <!-- History entries loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= PANDUAN GOOGLE APPS SCRIPT TAB ================= -->
+        <div id="section-panduan" class="hidden space-y-6">
+            
+            <!-- Quick Tutorial Card -->
+            <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-8 space-y-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900">Panduan Integrasi Google Sheets</h2>
+                    <p class="text-slate-500 text-sm mt-1">Ikuti langkah-langkah mudah di bawah ini untuk mengaktifkan database otomatis dengan Google Spreadsheet Anda.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-3">
+                        <div class="bg-blue-100 text-blue-900 h-10 w-10 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm">1</div>
+                        <h3 class="font-bold text-slate-800 text-base">Buat Spreadsheet</h3>
+                        <p class="text-xs text-slate-500 leading-relaxed">Buat Google Spreadsheet baru di Drive Anda, lalu beri nama sheets tersebut misal "Database BAST Online".</p>
+                    </div>
+                    <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-3">
+                        <div class="bg-blue-100 text-blue-900 h-10 w-10 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm">2</div>
+                        <h3 class="font-bold text-slate-800 text-base">Buka Apps Script</h3>
+                        <p class="text-xs text-slate-500 leading-relaxed">Pilih menu <strong>Ekstensi</strong> di Spreadsheet Anda > Klik <strong>Apps Script</strong>. Salin kode skrip di bawah ini.</p>
+                    </div>
+                    <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-3">
+                        <div class="bg-blue-100 text-blue-900 h-10 w-10 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm">3</div>
+                        <h3 class="font-bold text-slate-800 text-base">Deploy Web App</h3>
+                        <p class="text-xs text-slate-500 leading-relaxed">Klik <strong>Terapkan (Deploy)</strong> > <strong>Penerapan Baru</strong> > Tipe: <strong>Aplikasi Web</strong> > Akses: <strong>Siapa Saja (Anyone)</strong>.</p>
+                    </div>
+                </div>
+
+                <hr class="border-slate-200">
+
+                <!-- The Google Apps Script Code Block -->
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-lg">Kode Google Apps Script (`Code.gs`)</h3>
+                            <p class="text-xs text-slate-500 mt-0.5">Tempel kode di bawah ini pada file default <code class="bg-slate-100 px-1 py-0.5 rounded text-rose-600 font-semibold">Code.gs</code> di Google Apps Script Anda.</p>
+                        </div>
+                        <button onclick="copyToClipboard('gas-code')" class="bg-blue-900 hover:bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition duration-150 shadow-md">
+                            <i class="fas fa-copy"></i>
+                            <span>Salin Kode</span>
+                        </button>
+                    </div>
+
+                    <!-- Code viewer -->
+                    <div class="relative bg-slate-900 rounded-2xl p-6 text-blue-400 font-mono text-xs overflow-x-auto shadow-inner leading-relaxed">
+                        <pre id="gas-code">
+/* ========================================================================
+GOOGLE APPS SCRIPT - DATABASE BAST ONLINE INTERAKTIF (Terintegrasi)
+========================================================================
+Tautan Spreadsheet Anda:
+https://docs.google.com/spreadsheets/d/1-FSRDcv57_-NWZWnABIGtQ2VmvoZ4C_F390tP-eOMYE/edit
+========================================================================
+*/
+
+function doPost(e) {
+  // Aktifkan LockService untuk mencegah tabrakan data
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000); // Tunggu maksimal 30 detik
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      "status": "error",
+      "message": "Sistem sibuk. Silakan kirim ulang beberapa saat lagi."
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  try {
+    var data = JSON.parse(e.postData.contents);
+    
+    // Membuka spreadsheet spesifik berdasarkan ID unik dari tautan Anda
+    var ss = SpreadsheetApp.openById("1-FSRDcv57_-NWZWnABIGtQ2VmvoZ4C_F390tP-eOMYE");
+    
+    // Cari atau buat sheet bernama "DATABASE_BAST"
+    var sheet = ss.getSheetByName("DATABASE_BAST");
+    if (!sheet) {
+      sheet = ss.insertSheet("DATABASE_BAST");
+      var headers = [
+        "Timestamp", "No Dokumen", "Tanggal Serah Terima", "Lokasi",
+        "Nama Pihak 1", "Jabatan Pihak 1", "Perusahaan Pihak 1",
+        "Nama Pihak 2", "Jabatan Pihak 2", "Perusahaan Pihak 2",
+        "Daftar Barang", "Catatan Tambahan",
+        "Tanda Tangan Pihak 1", "Tanda Tangan Pihak 2"
+      ];
+      sheet.appendRow(headers);
+      
+      var headerRange = sheet.getRange(1, 1, 1, headers.length);
+      headerRange.setFontWeight("bold");
+      headerRange.setBackground("#0f172a");
+      headerRange.setFontColor("#ffffff");
+      headerRange.setHorizontalAlignment("center");
+      headerRange.setVerticalAlignment("middle");
+      sheet.setRowHeight(1, 35);
+    }
+    
+    var rawItems = data.items || [];
+    var itemsFormatted = rawItems.map(function(item, index) {
+      return (index + 1) + ". " + item.name + " (" + item.qty + " " + item.unit + ") - Kondisi: " + item.condition + (item.desc ? " [Ket: " + item.desc + "]" : "");
+    }).join("\n");
+
+    var rowData = [
+      new Date(),
+      data.doc_no,
+      data.doc_date,
+      data.doc_location,
+      data.p1_name,
+      data.p1_role,
+      data.p1_company,
+      data.p2_name,
+      data.p2_role,
+      data.p2_company,
+      itemsFormatted,
+      data.notes || "",
+      "[Tanda Tangan P1]",
+      "[Tanda Tangan P2]"
+    ];
+    
+    sheet.appendRow(rowData);
+    var newRowIndex = sheet.getLastRow();
+    
+    // Desain baris baru agar pas dengan tanda tangan gambar
+    sheet.setRowHeight(newRowIndex, 75); 
+    var rowRange = sheet.getRange(newRowIndex, 1, 1, rowData.length);
+    rowRange.setVerticalAlignment("middle");
+    rowRange.setHorizontalAlignment("left");
+    
+    sheet.getRange(newRowIndex, 11).setWrap(true);
+    sheet.getRange(newRowIndex, 12).setWrap(true);
+    
+    // Sisipkan gambar tanda tangan nyata langsung ke dalam sel
+    if (data.p1_signature) {
+      insertBase64ImageToCell(sheet, data.p1_signature, newRowIndex, 13, "TTD_P1_" + data.doc_no.replace(/[^a-zA-Z0-9]/g, "_"));
+    }
+    if (data.p2_signature) {
+      insertBase64ImageToCell(sheet, data.p2_signature, newRowIndex, 14, "TTD_P2_" + data.doc_no.replace(/[^a-zA-Z0-9]/g, "_"));
+    }
+    
+    sheet.autoResizeColumns(1, 12);
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      "status": "success",
+      "message": "Dokumen BAST " + data.doc_no + " berhasil diarsipkan dengan tanda tangan visual!"
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      "status": "error",
+      "message": "Internal Server Error: " + error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function insertBase64ImageToCell(sheet, base64DataUri, row, col, filename) {
+  try {
+    if (!base64DataUri || base64DataUri.indexOf("data:image/png;base64,") !== 0) {
+      return;
+    }
+    var rawBase64 = base64DataUri.split(",")[1];
+    var decodedBytes = Utilities.base64Decode(rawBase64);
+    var blob = Utilities.newBlob(decodedBytes, "image/png", filename + ".png");
+    var imageObj = sheet.insertImage(blob, col, row);
+    
+    var originalWidth = imageObj.getWidth();
+    var originalHeight = imageObj.getHeight();
+    var targetHeight = 65; 
+    var targetWidth = (originalWidth / originalHeight) * targetHeight;
+    
+    imageObj.setWidth(targetWidth);
+    imageObj.setHeight(targetHeight);
+    imageObj.setAnchorCellXOffset(15);
+    imageObj.setAnchorCellYOffset(5);
+    
+  } catch (err) {
+    sheet.getRange(row, col).setValue("[Gagal memuat visual TTD]");
+  }
+}
+
+function doGet() {
+  return HtmlService.createHtmlOutput("<h3>Konektor Google Apps Script E-BAST Aktif!</h3><p>Gunakan aplikasi form Anda untuk mengirimkan data kemari.</p>");
+}
+</pre>
+                    </div>
+                </div>
+
+                <!-- Web App Integration Section -->
+                <div class="bg-blue-50/70 p-6 rounded-2xl border border-blue-100 space-y-4">
+                    <div class="flex items-center space-x-2 text-blue-900">
+                        <i class="fas fa-link text-lg"></i>
+                        <h4 class="font-bold text-base">Hubungkan Form ini dengan Web App URL Anda</h4>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        Setelah Anda melakukan <strong>Deploy</strong> Google Apps Script dan mendapatkan <strong>URL Aplikasi Web</strong> (berupa tautan <code class="bg-white/80 px-1 py-0.5 rounded text-blue-900 font-mono">https://script.google.com/macros/s/.../exec</code>), masukkan tautan tersebut pada kolom di bawah ini untuk beralih dari mode simulasi lokal ke <strong>Mode Database Real Google Sheets</strong>.
+                    </p>
+                    
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <input type="url" id="web-app-url-input" class="flex-grow rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20" placeholder="https://script.google.com/macros/s/AKfyc.../exec">
+                        <button onclick="saveWebAppUrl()" class="px-6 py-3 bg-blue-900 hover:bg-slate-900 text-white font-bold rounded-xl text-sm transition shadow-lg shadow-blue-500/20">
+                            Simpan Tautan Integrasi
+                        </button>
+                    </div>
+                    <p id="url-status" class="text-xs font-semibold text-slate-500 mt-1"><i class="fas fa-info-circle"></i> Saat ini menggunakan mode: <span class="text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 font-medium">Simulasi Penyimpanan Lokal</span></p>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-6 mt-12 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-slate-400 font-medium">
+            &copy; 2026 E-BAST Indonesia. Semua Hak Cipta Dilindungi.
+        </div>
+    </footer>
+
+
+    <!-- ================= PRINT VIEW / PREVIEW MODAL ================= -->
+    <div id="print-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden no-print">
+        <div class="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 flex flex-col">
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center px-8 py-5 border-b border-slate-100 bg-slate-50 rounded-t-3xl">
+                <h3 class="font-bold text-slate-900 text-lg"><i class="fas fa-file-pdf mr-2 text-blue-900"></i> Pratinjau Dokumen BAST</h3>
+                <button onclick="closePrintModal()" class="text-slate-400 hover:text-slate-600 text-xl"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <!-- Modal Body (Printable Area) -->
+            <div id="print-area-wrapper" class="p-8 bg-slate-100 overflow-y-auto max-h-[60vh]">
+                <div id="print-area" class="p-10 text-slate-800 space-y-6 leading-relaxed bg-white shadow-md mx-auto max-w-[210mm] min-h-[297mm]">
+                    <!-- Header Dokumen Cetak -->
+                    <div class="border-b-4 border-slate-900 pb-5">
+                        <div class="flex justify-between items-center">
+                            <div class="space-y-1">
+                                <h2 class="text-2xl font-extrabold text-slate-900 tracking-wide">BERITA ACARA SERAH TERIMA</h2>
+                                <p class="text-xs uppercase font-bold text-slate-500 tracking-widest">Handover Material & Inventaris Barang</p>
+                            </div>
+                            <div class="text-right text-xs">
+                                <p class="font-bold text-slate-900" id="print-bast-no">NO: BAST/2026/06/001</p>
+                                <p class="text-slate-500" id="print-bast-date">Tanggal: 21 Juni 2026</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pembuka Acara -->
+                    <div class="text-sm">
+                        Pada hari ini, <strong id="print-day">Minggu</strong> tanggal <strong id="print-formatted-date">21 Juni 2026</strong> bertempat di <strong id="print-location">Medan</strong>, kami yang bertanda tangan di bawah ini telah melakukan proses serah terima barang/material dengan rincian pihak sebagai berikut:
+                    </div>
+
+                    <!-- Info Pihak di Dokumen -->
+                    <div class="grid grid-cols-2 gap-8 text-sm">
+                        <div class="space-y-2 border-l-2 border-blue-900 pl-4">
+                            <h4 class="font-bold text-slate-900 text-xs uppercase tracking-wider text-blue-900">PIHAK PERTAMA (Yang Menyerahkan)</h4>
+                            <table class="w-full text-xs">
+                                <tr><td class="py-1 text-slate-500 w-24">Nama</td><td class="py-1 font-semibold text-slate-800" id="print-p1-name">: John Doe</td></tr>
+                                <tr><td class="py-1 text-slate-500">Jabatan</td><td class="py-1 font-semibold text-slate-800" id="print-p1-role">: Warehouse Manager</td></tr>
+                                <tr><td class="py-1 text-slate-500">Divisi/Instansi</td><td class="py-1 font-semibold text-slate-800" id="print-p1-company">: Logistik PT ABC</td></tr>
+                            </table>
+                        </div>
+                        <div class="space-y-2 border-l-2 border-slate-900 pl-4">
+                            <h4 class="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-900">PIHAK KEDUA (Yang Menerima)</h4>
+                            <table class="w-full text-xs">
+                                <tr><td class="py-1 text-slate-500 w-24">Nama</td><td class="py-1 font-semibold text-slate-800" id="print-p2-name">: Jane Smith</td></tr>
+                                <tr><td class="py-1 text-slate-500">Jabatan</td><td class="py-1 font-semibold text-slate-800" id="print-p2-role">: QA Engineer</td></tr>
+                                <tr><td class="py-1 text-slate-500">Divisi/Instansi</td><td class="py-1 font-semibold text-slate-800" id="print-p2-company">: PT Sukses Mandiri</td></tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Pernyataan -->
+                    <p class="text-xs text-slate-600">
+                        Pihak Pertama menyerahkan barang/material kepada Pihak Kedua, dan Pihak Kedua menyatakan telah menerima barang/material tersebut dalam kondisi baik dan lengkap sesuai dengan rincian tabel di bawah ini:
+                    </p>
+
+                    <!-- Daftar Barang -->
+                    <div class="border border-slate-200 rounded-xl overflow-hidden">
+                        <table class="min-w-full divide-y divide-slate-200 text-xs">
+                            <thead class="bg-slate-50">
+                                <tr>
+                                    <th class="px-3 py-2 text-left font-bold text-slate-600">No</th>
+                                    <th class="px-3 py-2 text-left font-bold text-slate-600">Nama Barang / Material</th>
+                                    <th class="px-3 py-2 text-center font-bold text-slate-600">Jumlah</th>
+                                    <th class="px-3 py-2 text-left font-bold text-slate-600">Satuan</th>
+                                    <th class="px-3 py-2 text-left font-bold text-slate-600">Kondisi</th>
+                                    <th class="px-3 py-2 text-left font-bold text-slate-600">Keterangan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="print-material-rows" class="divide-y divide-slate-200">
+                                <!-- Injected dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Catatan -->
+                    <div class="text-xs space-y-1">
+                        <span class="font-bold text-slate-700">Catatan Tambahan / Keterangan:</span>
+                        <p id="print-notes" class="bg-slate-50 p-3 rounded-lg border border-slate-100 italic text-slate-600"></p>
+                    </div>
+
+                    <p class="text-xs text-slate-500 leading-relaxed">
+                        Demikian Berita Acara Serah Terima ini dibuat dengan sebenar-benarnya untuk digunakan sebagaimana mestinya. Sejak penandatanganan dokumen ini, tanggung jawab pemeliharaan barang beralih sepenuhnya kepada Pihak Kedua.
+                    </p>
+
+                    <!-- Area Tanda Tangan Cetak -->
+                    <div class="grid grid-cols-2 gap-8 pt-4">
+                        <div class="text-center space-y-2">
+                            <p class="text-xs font-semibold text-slate-500">Yang Menyerahkan (Pihak Pertama)</p>
+                            <div class="h-24 w-44 mx-auto flex items-center justify-center border border-slate-100 rounded-lg">
+                                <img id="print-p1-sig" src="" class="max-h-full max-w-full object-contain" alt="Sign P1">
+                            </div>
+                            <p class="text-xs font-bold text-slate-800" id="print-p1-lbl">John Doe</p>
+                        </div>
+                        <div class="text-center space-y-2">
+                            <p class="text-xs font-semibold text-slate-500">Yang Menerima (Pihak Kedua)</p>
+                            <div class="h-24 w-44 mx-auto flex items-center justify-center border border-slate-100 rounded-lg">
+                                <img id="print-p2-sig" src="" class="max-h-full max-w-full object-contain" alt="Sign P2">
+                            </div>
+                            <p class="text-xs font-bold text-slate-800" id="print-p2-lbl">Jane Smith</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer (Blue Theme) -->
+            <div class="flex justify-end gap-3 px-8 py-5 border-t border-slate-100 bg-slate-50 rounded-b-3xl">
+                <button onclick="closePrintModal()" class="px-5 py-2.5 bg-slate-200 text-slate-700 font-bold rounded-xl text-xs hover:bg-slate-300 transition">Batal</button>
+                <button onclick="downloadPDF()" class="px-6 py-2.5 bg-blue-900 text-white font-bold rounded-xl text-xs hover:bg-slate-900 transition flex items-center space-x-1.5 shadow-md shadow-blue-500/20">
+                    <i class="fas fa-file-download"></i>
+                    <span>Unduh PDF</span>
+                </button>
+                <button onclick="triggerPrint()" class="px-6 py-2.5 bg-slate-800 text-white font-bold rounded-xl text-xs hover:bg-slate-900 transition flex items-center space-x-1.5 shadow-md">
+                    <i class="fas fa-print"></i>
+                    <span>Cetak PDF</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ================= JAVASCRIPT LOGIC ================= -->
+    <script>
+        // Global State
+        let rowCounter = 0;
+        let p1Canvas, p2Canvas;
+        let p1Ctx, p2Ctx;
+        let p1IsDrawing = false, p2IsDrawing = false;
+        let history = [];
+        let webAppUrl = "";
+
+        // Custom Confirm Callback Store
+        let customConfirmCallback = null;
+
+        // On Page Load
+        window.onload = function() {
+            // Set default date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('doc_date').value = today;
+
+            // Load saved settings from LocalStorage
+            loadSettings();
+
+            // Setup dynamic row template
+            addMaterialRow();
+            addMaterialRow(); // Start with 2 default rows
+
+            // Setup Signature Canvases
+            initCanvas('p1-canvas', 'p1IsDrawing');
+            initCanvas('p2-canvas', 'p2IsDrawing');
+
+            // Responsive canvas resize support
+            window.addEventListener('resize', () => {
+                resizeCanvas('p1-canvas');
+                resizeCanvas('p2-canvas');
+            });
+
+            // Set current human date on banner
+            updateBannerDate();
+
+            // Hook up custom modal triggers
+            document.getElementById('confirm-cancel').addEventListener('click', () => closeCustomConfirm(false));
+            document.getElementById('confirm-ok').addEventListener('click', () => closeCustomConfirm(true));
+        };
+
+        function updateBannerDate() {
+            const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+            const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            const current = new Date();
+            
+            const formatted = `${days[current.getDay()]} , ${current.getDate()} ${months[current.getMonth()]} ${current.getFullYear()}`;
+            document.getElementById('header-date').innerText = formatted;
+        }
+
+        // --- CUSTOM CONFIRM DIALOG HANDLER ---
+        function showCustomConfirm(title, message, onConfirm) {
+            document.getElementById('confirm-title').innerText = title;
+            document.getElementById('confirm-message').innerText = message;
+            document.getElementById('confirm-modal').classList.remove('hidden');
+            customConfirmCallback = onConfirm;
+        }
+
+        function closeCustomConfirm(isConfirmed) {
+            document.getElementById('confirm-modal').classList.add('hidden');
+            if (isConfirmed && customConfirmCallback) {
+                customConfirmCallback();
+            }
+            customConfirmCallback = null;
+        }
+
+        // --- MANAGE DYNAMIC MATERIAL TABLE ROWS ---
+        function addMaterialRow() {
+            rowCounter++;
+            const tbody = document.getElementById('material-rows');
+            const row = document.createElement('tr');
+            row.id = `row-${rowCounter}`;
+            row.className = "hover:bg-slate-50/50 transition-colors duration-150";
+            
+            row.innerHTML = `
+                <td class="px-4 py-3 font-semibold text-slate-500 text-center row-num">${tbody.children.length + 1}</td>
+                <td class="px-4 py-3">
+                    <input type="text" required class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs focus:border-blue-600 focus:ring-1 focus:ring-blue-600/10" placeholder="Contoh: Kabel UTP Cat6">
+                </td>
+                <td class="px-4 py-3">
+                    <input type="number" required min="1" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs focus:border-blue-600 focus:ring-1 focus:ring-blue-600/10" placeholder="0">
+                </td>
+                <td class="px-4 py-3">
+                    <input type="text" required class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs focus:border-blue-600 focus:ring-1 focus:ring-blue-600/10" placeholder="Pcs/Unit/Roll" list="satuan-list">
+                    <datalist id="satuan-list">
+                        <option value="Pcs">
+                        <option value="Unit">
+                        <option value="Meter">
+                        <option value="Roll">
+                        <option value="Box">
+                        <option value="Kg">
+                    </datalist>
+                </td>
+                <td class="px-4 py-3">
+                    <select class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs focus:border-blue-600 focus:ring-1 focus:ring-blue-600/10">
+                        <option value="Baik / Layak">Baik / Layak</option>
+                        <option value="Baru (Segel)">Baru (Segel)</option>
+                        <option value="Rusak / Lecet">Rusak / Lecet</option>
+                        <option value="Perlu Perbaikan">Perlu Perbaikan</option>
+                    </select>
+                </td>
+                <td class="px-4 py-3">
+                    <input type="text" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs focus:border-blue-600 focus:ring-1 focus:ring-blue-600/10" placeholder="Keterangan opsional">
+                </td>
+                <td class="no-print px-4 py-3 text-right">
+                    <button type="button" onclick="deleteMaterialRow(${rowCounter})" class="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition duration-150">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+            updateRowNumbers();
+        }
+
+        function deleteMaterialRow(id) {
+            const tbody = document.getElementById('material-rows');
+            if (tbody.children.length <= 1) {
+                showToast("Formulir wajib menyertakan minimal 1 buah barang!", "error");
+                return;
+            }
+            const row = document.getElementById(`row-${id}`);
+            if (row) {
+                row.remove();
+                updateRowNumbers();
+            }
+        }
+
+        function updateRowNumbers() {
+            const rows = document.querySelectorAll('#material-rows tr');
+            rows.forEach((row, index) => {
+                row.querySelector('.row-num').innerText = index + 1;
+            });
+        }
+
+
+        // --- DIGITAL SIGNATURE CANVAS LOGIC (DPR optimized for crisp display) ---
+        function initCanvas(canvasId, drawingStateVar) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            
+            // DPR scaling for Retina devices
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            
+            canvas.width = rect.width * dpr;
+            canvas.height = 160 * dpr;
+            ctx.scale(dpr, dpr);
+            
+            canvas.style.width = '100%';
+            canvas.style.height = '160px';
+
+            // Set drawing defaults
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#0f172a'; // dark slate for pen
+
+            // Mouse Events
+            canvas.addEventListener('mousedown', (e) => startDrawing(e, canvas, ctx, drawingStateVar));
+            canvas.addEventListener('mousemove', (e) => draw(e, canvas, ctx, drawingStateVar));
+            canvas.addEventListener('mouseup', () => stopDrawing(drawingStateVar));
+            canvas.addEventListener('mouseleave', () => stopDrawing(drawingStateVar));
+
+            // Touch Events (For Mobile/Tablets)
+            canvas.addEventListener('touchstart', (e) => {
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent('mousedown', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                canvas.dispatchEvent(mouseEvent);
+                e.preventDefault();
+            });
+            canvas.addEventListener('touchmove', (e) => {
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent('mousemove', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                canvas.dispatchEvent(mouseEvent);
+                e.preventDefault();
+            });
+            canvas.addEventListener('touchend', () => {
+                const mouseEvent = new MouseEvent('mouseup', {});
+                canvas.dispatchEvent(mouseEvent);
+            });
+        }
+
+        function resizeCanvas(canvasId) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const temp = canvas.toDataURL(); // Save drawings before resizing
+            
+            const ctx = canvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            
+            canvas.width = rect.width * dpr;
+            canvas.height = 160 * dpr;
+            ctx.scale(dpr, dpr);
+            
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#0f172a';
+            
+            // Restore previous drawing
+            const img = new Image();
+            img.onload = function() {
+                ctx.drawImage(img, 0, 0, rect.width, 160);
+            }
+            img.src = temp;
+        }
+
+        function getMousePos(canvasDom, mouseEvent) {
+            const rect = canvasDom.getBoundingClientRect();
+            return {
+                x: mouseEvent.clientX - rect.left,
+                y: mouseEvent.clientY - rect.top
+            };
+        }
+
+        function startDrawing(e, canvas, ctx, stateVar) {
+            window[stateVar] = true;
+            const pos = getMousePos(canvas, e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+        }
+
+        function draw(e, canvas, ctx, stateVar) {
+            if (!window[stateVar]) return;
+            const pos = getMousePos(canvas, e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+        }
+
+        function stopDrawing(stateVar) {
+            window[stateVar] = false;
+        }
+
+        function clearCanvas(canvasId) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function isCanvasBlank(canvasId) {
+            const canvas = document.getElementById(canvasId);
+            const blank = document.createElement('canvas');
+            blank.width = canvas.width;
+            blank.height = canvas.height;
+            return canvas.toDataURL() === blank.toDataURL();
+        }
+
+
+        // --- TAB NAVIGATION SYSTEM ---
+        function switchTab(tabName) {
+            // Hide all sections
+            document.getElementById('section-form').classList.add('hidden');
+            document.getElementById('section-riwayat').classList.add('hidden');
+            document.getElementById('section-panduan').classList.add('hidden');
+
+            // Reset navigation active styles
+            const tabs = ['form', 'riwayat', 'panduan'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                btn.className = "px-4 py-2 text-sm font-semibold rounded-lg text-slate-300 hover:text-white transition-all duration-200";
+            });
+
+            // Show active section & highlight tab
+            document.getElementById(`section-${tabName}`).classList.remove('hidden');
+            document.getElementById(`tab-${tabName}`).className = "px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white shadow-sm transition-all duration-200";
+            
+            if (tabName === 'riwayat') {
+                renderHistory();
+            }
+        }
+
+
+        // --- NOTIFICATION HANDLER (TOAST) ---
+        function showToast(message, type = "success") {
+            const toast = document.getElementById('toast');
+            const toastIcon = document.getElementById('toast-icon');
+            const toastMessage = document.getElementById('toast-message');
+
+            toastMessage.innerText = message;
+            
+            if (type === "success") {
+                toast.className = "fixed top-5 right-5 z-50 transform translate-y-0 opacity-100 transition-all duration-300 ease-out bg-slate-900 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center space-x-3 no-print";
+                toastIcon.innerHTML = `<i class="fas fa-check-circle"></i>`;
+            } else {
+                toast.className = "fixed top-5 right-5 z-50 transform translate-y-0 opacity-100 transition-all duration-300 ease-out bg-rose-600 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center space-x-3 no-print";
+                toastIcon.innerHTML = `<i class="fas fa-exclamation-triangle"></i>`;
+            }
+
+            // Slide out after 4 seconds
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                toast.classList.add('translate-y-[-100px]');
+            }, 4000);
+        }
+
+
+        // --- SETTINGS MANAGEMENT (LocalStorage) ---
+        function loadSettings() {
+            // Load history
+            const storedHistory = localStorage.getItem('bast_history');
+            if (storedHistory) {
+                history = JSON.parse(storedHistory);
+                document.getElementById('riwayat-count').innerText = history.length;
+            }
+
+            // Load P1 Auto-Remember Profile
+            const rememberP1 = localStorage.getItem('bast_remember_p1') === 'true';
+            document.getElementById('remember-p1').checked = rememberP1;
+            if (rememberP1) {
+                document.getElementById('p1_name').value = localStorage.getItem('bast_p1_name') || '';
+                document.getElementById('p1_role').value = localStorage.getItem('bast_p1_role') || '';
+                document.getElementById('p1_company').value = localStorage.getItem('bast_p1_company') || '';
+            }
+
+            // Load Google Web App URL
+            const storedUrl = localStorage.getItem('bast_web_app_url');
+            if (storedUrl) {
+                webAppUrl = storedUrl;
+                document.getElementById('web-app-url-input').value = webAppUrl;
+                updateUrlStatusLabel(true);
+            }
+        }
+
+        function saveWebAppUrl() {
+            const val = document.getElementById('web-app-url-input').value.trim();
+            if (val === "") {
+                localStorage.removeItem('bast_web_app_url');
+                webAppUrl = "";
+                updateUrlStatusLabel(false);
+                showToast("Tautan dibersihkan. Kembali menggunakan mode simulasi lokal.", "success");
+            } else if (val.startsWith("https://script.google.com/")) {
+                localStorage.setItem('bast_web_app_url', val);
+                webAppUrl = val;
+                updateUrlStatusLabel(true);
+                showToast("Tautan integrasi berhasil disimpan!", "success");
+            } else {
+                showToast("Tautan tidak valid! Pastikan mengarah ke Google Apps Script.", "error");
+            }
+        }
+
+        function updateUrlStatusLabel(hasUrl) {
+            const el = document.getElementById('url-status');
+            if (hasUrl) {
+                el.innerHTML = `<i class="fas fa-link text-blue-900"></i> Terintegrasi dengan: <span class="text-white bg-blue-900 px-2 py-0.5 rounded-full border border-blue-950 font-semibold text-xs">Google Sheets Aktif</span>`;
+            } else {
+                el.innerHTML = `<i class="fas fa-info-circle text-amber-500"></i> Mode saat ini: <span class="text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 text-xs">Simulasi Penyimpanan Lokal</span>`;
+            }
+        }
+
+
+        // --- LOAD DEMO DATA (Single-click testing) ---
+        function loadDemoData() {
+            const randomID = Math.floor(100 + Math.random() * 900);
+            document.getElementById('doc_no').value = `BAST/2026/06/${randomID}`;
+            document.getElementById('doc_location').value = "Gudang Distribusi Utama, Medan";
+            
+            document.getElementById('p1_name').value = "Budi Hartono";
+            document.getElementById('p1_role').value = "Logistics Supervisor";
+            document.getElementById('p1_company').value = "PT Global Sentral Logistik";
+
+            document.getElementById('p2_name').value = "Siti Rahma";
+            document.getElementById('p2_role').value = "Project Inventory Officer";
+            document.getElementById('p2_company').value = "PT Indonesia Jaya Kontraktor";
+
+            document.getElementById('notes').value = "Semua material dikirim dalam keadaan baru dan tersegel rapi. Mohon dilakukan pengecekan serial number.";
+
+            // Reset and load 3 sample items
+            const tbody = document.getElementById('material-rows');
+            tbody.innerHTML = "";
+            rowCounter = 0;
+
+            addMaterialRow();
+            addMaterialRow();
+            addMaterialRow();
+
+            setTimeout(() => {
+                const rows = tbody.querySelectorAll('tr');
+                // Row 1
+                rows[0].querySelectorAll('input')[0].value = "Kabel Fiber Optik Drop Core 1 Core";
+                rows[0].querySelectorAll('input')[1].value = "3";
+                rows[0].querySelectorAll('input')[2].value = "Roll";
+                rows[0].querySelector('select').value = "Baru (Segel)";
+                rows[0].querySelectorAll('input')[3].value = "Panjang 1000m";
+
+                // Row 2
+                rows[1].querySelectorAll('input')[0].value = "SFP Transceiver Module 10G 10km";
+                rows[1].querySelectorAll('input')[1].value = "12";
+                rows[1].querySelectorAll('input')[2].value = "Pcs";
+                rows[1].querySelector('select').value = "Baru (Segel)";
+                rows[1].querySelectorAll('input')[3].value = "Brand Cisco Original";
+
+                // Row 3
+                rows[2].querySelectorAll('input')[0].value = "UPS 1200VA Industrial Grade";
+                rows[2].querySelectorAll('input')[1].value = "2";
+                rows[2].querySelectorAll('input')[2].value = "Unit";
+                rows[2].querySelector('select').value = "Baik / Layak";
+                rows[2].querySelectorAll('input')[3].value = "Termasuk kabel power";
+            }, 50);
+
+            showToast("Sukses memuat data demo!", "success");
+        }
+
+
+        // --- FORM SUBMIT & DATABASE CONNECTION ---
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+
+            // Check signature pads
+            if (isCanvasBlank('p1-canvas') || isCanvasBlank('p2-canvas')) {
+                showToast("Kedua belah pihak wajib membubuhkan tanda tangan digital!", "error");
+                return;
+            }
+
+            // Save P1 Profile if check-box enabled
+            const rememberP1 = document.getElementById('remember-p1').checked;
+            localStorage.setItem('bast_remember_p1', rememberP1);
+            if (rememberP1) {
+                localStorage.setItem('bast_p1_name', document.getElementById('p1_name').value.trim());
+                localStorage.setItem('bast_p1_role', document.getElementById('p1_role').value.trim());
+                localStorage.setItem('bast_p1_company', document.getElementById('p1_company').value.trim());
+            } else {
+                localStorage.removeItem('bast_p1_name');
+                localStorage.removeItem('bast_p1_role');
+                localStorage.removeItem('bast_p1_company');
+            }
+
+            // Construct Material Object
+            const materialRows = document.querySelectorAll('#material-rows tr');
+            const items = [];
+            materialRows.forEach(row => {
+                const inputs = row.querySelectorAll('input, select');
+                items.push({
+                    name: inputs[0].value.trim(),
+                    qty: inputs[1].value,
+                    unit: inputs[2].value.trim(),
+                    condition: inputs[3].value,
+                    desc: inputs[4].value.trim()
+                });
+            });
+
+            // Gather complete payload
+            const payload = {
+                doc_no: document.getElementById('doc_no').value.trim(),
+                doc_date: document.getElementById('doc_date').value,
+                doc_location: document.getElementById('doc_location').value.trim(),
+                p1_name: document.getElementById('p1_name').value.trim(),
+                p1_role: document.getElementById('p1_role').value.trim(),
+                p1_company: document.getElementById('p1_company').value.trim(),
+                p2_name: document.getElementById('p2_name').value.trim(),
+                p2_role: document.getElementById('p2_role').value.trim(),
+                p2_company: document.getElementById('p2_company').value.trim(),
+                items: items,
+                notes: document.getElementById('notes').value.trim(),
+                p1_signature: document.getElementById('p1-canvas').toDataURL(),
+                p2_signature: document.getElementById('p2-canvas').toDataURL()
+            };
+
+            // Toggle loading state on button
+            setSubmitLoadingState(true);
+
+            // Update document counter dynamically for next generation
+            document.getElementById('header-no').innerText = `No: ${payload.doc_no}`;
+
+            // Save to local history
+            history.unshift(payload);
+            localStorage.setItem('bast_history', JSON.stringify(history));
+            document.getElementById('riwayat-count').innerText = history.length;
+
+            // Submit to Google Sheets (if URL configured)
+            if (webAppUrl) {
+                showToast("Sedang mengirimkan data ke Google Sheets...", "success");
+                try {
+                    await fetch(webAppUrl, {
+                        method: 'POST',
+                        mode: 'no-cors', // Crucial for Google Apps Script deployment compatibility
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    showToast("BAST berhasil terkirim & disimpan ke Google Sheets!", "success");
+                } catch (err) {
+                    console.error(err);
+                    showToast("Gagal mengirim data langsung ke Google Sheets. Silakan cek deployment URL Anda.", "error");
+                }
+            } else {
+                showToast("BAST berhasil disimpan ke riwayat lokal (Mode Simulasi)!", "success");
+            }
+
+            setSubmitLoadingState(false);
+            openPrintModal(payload);
+        }
+
+        function setSubmitLoadingState(isLoading) {
+            const btn = document.getElementById('btn-submit-main');
+            const spinner = document.getElementById('submit-spinner');
+            const icon = document.getElementById('submit-icon');
+            const text = document.getElementById('submit-text');
+
+            if (isLoading) {
+                btn.disabled = true;
+                btn.classList.add('opacity-75', 'cursor-not-allowed');
+                spinner.classList.remove('hidden');
+                icon.classList.add('hidden');
+                text.innerText = "Mengirim data...";
+            } else {
+                btn.disabled = false;
+                btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                spinner.classList.add('hidden');
+                icon.classList.remove('hidden');
+                text.innerText = "Simpan BAST & Kirim ke Spreadsheet";
+            }
+        }
+
+        function triggerResetForm() {
+            showCustomConfirm(
+                "Reset Formulir", 
+                "Apakah Anda yakin ingin mengosongkan seluruh formulir ini? Semua isian dan tanda tangan akan dihapus.", 
+                function() {
+                    document.getElementById('bast-form').reset();
+                    const today = new Date().toISOString().split('T')[0];
+                    document.getElementById('doc_date').value = today;
+                    
+                    // Clear signatures
+                    clearCanvas('p1-canvas');
+                    clearCanvas('p2-canvas');
+
+                    // Clear items list except 2 default rows
+                    const tbody = document.getElementById('material-rows');
+                    tbody.innerHTML = "";
+                    rowCounter = 0;
+                    addMaterialRow();
+                    addMaterialRow();
+                    
+                    // Reload P1 auto-remember settings if checked
+                    loadSettings();
+                    
+                    showToast("Formulir berhasil di-reset.", "success");
+                }
+            );
+        }
+
+
+        // --- RENDERING HISTORY TAB ---
+        function renderHistory() {
+            const rowsContainer = document.getElementById('riwayat-rows');
+            rowsContainer.innerHTML = "";
+
+            if (history.length === 0) {
+                rowsContainer.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-6 py-10 text-center text-sm text-slate-400 font-medium">
+                            <i class="fas fa-folder-open text-3xl mb-2 block"></i> Belum ada dokumen BAST yang dikirimkan.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            history.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/50 transition duration-150";
+                tr.innerHTML = `
+                    <td class="px-6 py-4 font-bold text-slate-800">${item.doc_no}</td>
+                    <td class="px-6 py-4 text-slate-500 font-medium">${formatDisplayDate(item.doc_date)}</td>
+                    <td class="px-6 py-4">
+                        <div class="font-semibold text-slate-700">${item.p1_name}</div>
+                        <div class="text-xs text-slate-400">${item.p1_company}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="font-semibold text-slate-700">${item.p2_name}</div>
+                        <div class="text-xs text-slate-400">${item.p2_company}</div>
+                    </td>
+                    <td class="px-6 py-4 font-semibold text-slate-600">${item.items.length} Item</td>
+                    <td class="px-6 py-4 text-right">
+                        <button onclick="viewHistoryItem(${index})" class="text-blue-900 hover:text-blue-950 font-bold text-xs inline-flex items-center space-x-1 hover:underline">
+                            <i class="fas fa-eye"></i> <span>Lihat BAST</span>
+                        </button>
+                    </td>
+                `;
+                rowsContainer.appendChild(tr);
+            });
+        }
+
+        function triggerClearHistory() {
+            showCustomConfirm(
+                "Hapus Semua Riwayat", 
+                "Anda yakin ingin menghapus seluruh data riwayat lokal? Tindakan ini tidak dapat dibatalkan.", 
+                function() {
+                    history = [];
+                    localStorage.removeItem('bast_history');
+                    document.getElementById('riwayat-count').innerText = 0;
+                    renderHistory();
+                    showToast("Semua riwayat lokal berhasil dihapus.", "success");
+                }
+            );
+        }
+
+        function viewHistoryItem(index) {
+            openPrintModal(history[index]);
+        }
+
+        function formatDisplayDate(dateStr) {
+            if (!dateStr) return "-";
+            const dateObj = new Date(dateStr);
+            const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            return `${dateObj.getDate()} ${months[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
+        }
+
+
+        // --- PRINT PREVIEW AND GENERATION MODAL ---
+        function openPrintModal(data) {
+            // Set fields inside modal printable zone
+            document.getElementById('print-bast-no').innerText = `NO: ${data.doc_no}`;
+            document.getElementById('print-bast-date').innerText = `Tanggal: ${formatDisplayDate(data.doc_date)}`;
+            
+            // Format Day Name
+            const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+            const dateObj = new Date(data.doc_date);
+            document.getElementById('print-day').innerText = days[dateObj.getDay()];
+            document.getElementById('print-formatted-date').innerText = formatDisplayDate(data.doc_date);
+            document.getElementById('print-location').innerText = data.doc_location;
+
+            // Pihak Pertama
+            document.getElementById('print-p1-name').innerText = `: ${data.p1_name}`;
+            document.getElementById('print-p1-role').innerText = `: ${data.p1_role}`;
+            document.getElementById('print-p1-company').innerText = `: ${data.p1_company}`;
+            document.getElementById('print-p1-lbl').innerText = data.p1_name;
+            document.getElementById('print-p1-sig').src = data.p1_signature;
+
+            // Pihak Kedua
+            document.getElementById('print-p2-name').innerText = `: ${data.p2_name}`;
+            document.getElementById('print-p2-role').innerText = `: ${data.p2_role}`;
+            document.getElementById('print-p2-company').innerText = `: ${data.p2_company}`;
+            document.getElementById('print-p2-lbl').innerText = data.p2_name;
+            document.getElementById('print-p2-sig').src = data.p2_signature;
+
+            // Render Material Rows inside modal
+            const printTableBody = document.getElementById('print-material-rows');
+            printTableBody.innerHTML = "";
+            data.items.forEach((item, idx) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="px-3 py-2 border border-slate-200 text-center font-semibold text-slate-600">${idx + 1}</td>
+                    <td class="px-3 py-2 border border-slate-200 font-medium text-slate-800">${item.name}</td>
+                    <td class="px-3 py-2 border border-slate-200 text-center font-bold text-slate-900">${item.qty}</td>
+                    <td class="px-3 py-2 border border-slate-200 text-slate-600">${item.unit}</td>
+                    <td class="px-3 py-2 border border-slate-200 font-semibold text-blue-900">${item.condition}</td>
+                    <td class="px-3 py-2 border border-slate-200 text-slate-500 italic">${item.desc || '-'}</td>
+                `;
+                printTableBody.appendChild(tr);
+            });
+
+            // Catatan
+            document.getElementById('print-notes').innerText = data.notes || "Tidak ada catatan tambahan.";
+
+            // Display Modal
+            document.getElementById('print-modal').classList.remove('hidden');
+        }
+
+        function closePrintModal() {
+            document.getElementById('print-modal').classList.add('hidden');
+        }
+
+        // Trigger native browser print dialog
+        function triggerPrint() {
+            window.print();
+        }
+
+        // Bulletproof PDF Exporting Solution (Direct visible DOM rendering)
+        function downloadPDF() {
+            const element = document.getElementById('print-area');
+            const wrapper = document.getElementById('print-area-wrapper');
+            const documentNo = document.getElementById('print-bast-no').innerText.replace(/[^a-zA-Z0-9]/g, '_');
+            
+            showToast("Sedang memproses unduhan PDF...", "success");
+
+            // Simpan konfigurasi tinggi & scroll asli wrapper modal
+            const originalMaxHeight = wrapper.style.maxHeight;
+            const originalOverflowY = wrapper.style.overflowY;
+
+            // Hapus pembatas tinggi & scroll modal agar elemen dirender utuh dari atas ke bawah
+            wrapper.style.maxHeight = 'none';
+            wrapper.style.overflowY = 'visible';
+
+            const options = {
+                margin:       10, // 10mm margin
+                filename:     `BAST_Handover_${documentNo}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { 
+                    scale: 2, 
+                    useCORS: true, 
+                    logging: false,
+                    scrollY: 0,
+                    scrollX: 0
+                },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // Berikan jeda singkat (300ms) agar browser menyelesaikan reflow DOM
+            setTimeout(() => {
+                html2pdf().set(options).from(element).save().then(() => {
+                    // Kembalikan visual modal ke rasio semula
+                    wrapper.style.maxHeight = originalMaxHeight;
+                    wrapper.style.overflowY = originalOverflowY;
+                    showToast("File PDF sukses diunduh secara otomatis!", "success");
+                }).catch(err => {
+                    console.error("PDF generation failed:", err);
+                    wrapper.style.maxHeight = originalMaxHeight;
+                    wrapper.style.overflowY = originalOverflowY;
+                    showToast("Gagal mengunduh PDF. Silakan gunakan tombol Cetak.", "error");
+                });
+            }, 300);
+        }
+
+        // Copy Code utility (CORS workaround)
+        function copyToClipboard(elementId) {
+            const codeText = document.getElementById(elementId).innerText;
+            const tempInput = document.createElement("textarea");
+            tempInput.value = codeText;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempInput);
+            showToast("Kode Apps Script berhasil disalin ke clipboard!", "success");
+        }
+    </script>
+</body>
+</html>
